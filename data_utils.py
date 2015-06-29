@@ -5,7 +5,7 @@ import argparse
 
 import numpy as np
 
-from file_utils import load_filenames_from_directory, read_data
+import file_utils
 
 def get_interaction_name(filepath):
 	"""
@@ -76,8 +76,8 @@ def create_samples_from_feature_files(pairs, sequence_length):
 	"""
 	samples = []
 	for pair in pairs:
-		p1_data = read_data(pair[0])
-		p2_data = read_data(pair[1])
+		p1_data = file_utils.read_data(pair[0])
+		p2_data = file_utils.read_data(pair[1])
 
 		# if either file is empty then ignore this pair
 		if not p1_data or not p2_data:
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 	if not os.path.exists(feature_directory):
 		raise RuntimeError("Output directory does not exist %s"%(feature_directory))
 
-	filepaths = load_filenames_from_directory(features_directory)
+	filepaths = file_utils.load_filenames_from_directory(features_directory)
 	pairs = get_filepath_pairs_by_interaction(filepaths)
 	sample_data = create_samples_from_feature_files(pairs, sequence_length)
-	write_data_to_file(sample_data, output_filepath)
+	file_utils.write_data_to_file(sample_data, output_filepath)
