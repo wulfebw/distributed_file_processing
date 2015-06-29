@@ -1,6 +1,7 @@
 import os
 import csv
 import glob
+import argparse
 
 import numpy as np
 
@@ -90,11 +91,20 @@ def create_samples_from_feature_files(pairs, sequence_length):
 	return samples
 
 if __name__ == '__main__':
-	# read in data as a squence of frames in the format [binary_smile_person_1, binary_smile_person_2]
-	features_directory = '/Users/wulfe/Dropbox/Start/smile/data/smile_assessment'
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--feature_directory',dest='feat_dir', type=str, help='dir containing feat files')
+	parser.add_argument('--output_filepath',dest='output_filepath', type=str, help='output filepath')
+	parser.add_argument('--sequence_length',dest='sequence_length', type=int, help='sequence_length')
+	args = parser.parse_args()
+
+	feature_directory = args.feat_dir
+	output_filepath = args.output_filepath
+	sequence_length = args.sequence_length
+
+	if not os.path.exists(feature_directory):
+		raise RuntimeError("Output directory does not exist %s"%(feature_directory))
+
 	filepaths = load_filenames_from_directory(features_directory)
 	pairs = get_filepath_pairs_by_interaction(filepaths)
-	sequence_length = 8 
 	sample_data = create_samples_from_feature_files(pairs, sequence_length)
-	output_filename = '/Users/wulfe/Dropbox/Start/smile/data/smiles_by_frame_as_sample_data/smile_sample.csv'
-	write_data_to_file(sample_data, output_filename)
+	write_data_to_file(sample_data, output_filepath)
