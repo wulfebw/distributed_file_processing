@@ -7,6 +7,8 @@ import numpy as np
 
 import file_utils
 
+
+
 def get_interaction_name(filepath):
 	"""
 	:description: returns a the name of the interaction a given data file is part of. Interaction name just puts the male id first
@@ -68,7 +70,10 @@ def group_single_timestep_data_into_sequences(timestep_data, sequence_length):
 	n_new_cols = n_cur_cols * sequence_length
 	n_new_rows = n_cur_rows / sequence_length
 	sequences = np.reshape(data, (n_new_rows, n_new_cols))
-	return sequences
+	return sequences.tolist()
+
+def column_stack_with_concatenate(data_1, data_2):
+	return [[i + j] for i,j in zip(data_1, data_2)]
 
 def create_samples_from_feature_files(pairs, sequence_length):
 	"""
@@ -86,9 +91,9 @@ def create_samples_from_feature_files(pairs, sequence_length):
 		p1_sequence_data = group_single_timestep_data_into_sequences(p1_data, sequence_length)
 		p2_sequence_data = group_single_timestep_data_into_sequences(p2_data, sequence_length)
 
-		sample = np.column_stack((p1_sequence_data, p2_sequence_data))
-		samples.append(sample)
-	return samples
+		sample = column_stack_with_concatenate(p1_sequence_data, p2_sequence_data)
+		samples += sample
+	return np.array(samples)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -104,7 +109,8 @@ if __name__ == '__main__':
 	if not os.path.exists(feature_directory):
 		raise RuntimeError("Output directory does not exist %s"%(feature_directory))
 
-	filepaths = file_utils.load_filenames_from_directory(features_directory)
+	filepaths = file_utils.load_filenames_from_directory(feature_directory)
 	pairs = get_filepath_pairs_by_interaction(filepaths)
 	sample_data = create_samples_from_feature_files(pairs, sequence_length)
+
 	file_utils.write_data_to_file(sample_data, output_filepath)

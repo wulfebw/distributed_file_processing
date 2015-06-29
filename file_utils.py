@@ -1,3 +1,8 @@
+import os
+import sys
+import csv
+import glob
+
 def make_directory(directory_path):
 	# create the output directory if it does not already exist
 	try:
@@ -78,7 +83,7 @@ def read_data(input_filename):
 	data = []
 	try:
 		with open(input_filename, 'r') as csvfile:
-			reader = csv.reader(csvfile, delimiter=',')
+			reader = csv.reader(csvfile, delimiter=' ')
 			for row in reader:
 				data.append(map(float,row))
 	except IOError as e:
