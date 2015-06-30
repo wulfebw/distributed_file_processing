@@ -106,9 +106,10 @@ def read_data(input_filename):
 	data = []
 	try:
 		with open(input_filename, 'r') as csvfile:
-			reader = csv.reader(csvfile, delimiter=',')
-			for row in reader:
-				data.append(map(float,row))
+			reader = csv.reader(csvfile, delimiter=' ')
+			for index, row in enumerate(reader):
+				if index % 30 == 0:
+					data.append(map(float,row))
 	except IOError as e:
 		raise IOError('input filename: {} raised IOError on read'.format(input_filename))
 	return data

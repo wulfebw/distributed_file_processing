@@ -111,38 +111,6 @@ def create_samples_from_feature_files(pairs, sequence_length, output_filepath):
 		samples += sample
 	return samples
 
-
-# def create_samples_from_feature_files(pairs, sequence_length):
-# 	"""
-# 	:description: main function that takes a list of tuples (pairs) of filenames and returns the data from those files in the form of data samples. 
-# 	"""
-# 	samples = []
-# 	for pair in pairs:
-# 		pair_data = []
-# 		for file in pair:
-# 			data = file_utils.read_data(file)
-# 			sequence_data = group_single_timestep_data_into_sequences(data, sequence_length)
-# 			pair_data.append(sequence_data)
-# 		# print('processing pair: {}'.format(pair))
-# 		# p1_data = file_utils.read_data(pair[0])
-# 		# p2_data = file_utils.read_data(pair[1])
-
-# 		# # if either file is empty then ignore this pair
-# 		# if not p1_data or not p2_data:
-# 		# 	continue
-
-# 		# p1_sequence_data = group_single_timestep_data_into_sequences(p1_data, sequence_length)
-# 		# p2_sequence_data = group_single_timestep_data_into_sequences(p2_data, sequence_length)
-
-# 		# sample = column_stack_with_concatenate(p1_sequence_data, p2_sequence_data)
-# 		# samples += sample
-# 		if not pair_data[0] or not pair_data[1]:
-# 			continue
-# 		column_stack_with_concatenate(pair_data[0], pair_data[1])
-# 		samples += create_sample_from_feature_files(pair, sequence_length)
-# 	return np.array(samples)
-
-
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--feature_directory',dest='feat_dir', type=str, help='dir containing feat files')
