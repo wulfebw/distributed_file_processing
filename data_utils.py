@@ -59,13 +59,16 @@ def group_single_timestep_data_into_sequences(timestep_data, sequence_length):
 	data = np.array(timestep_data)
 
 	# discard rows to allow for even reshape
-	n_cur_rows = data.shape[0]
+	try:
+		n_cur_rows = data.shape[0]
+		n_cur_cols = data.shape[1]
+	except IndexError as e:
+		raise IndexError('in group_single_timestep_data_into_sequences(), the timestep_data did not have a valid shape value')
 	n_rows_to_discard = n_cur_rows % sequence_length
 	if n_rows_to_discard != 0:
 		data = data[:-n_rows_to_discard]
+		n_cur_rows -= n_rows_to_discard
 
-	n_cur_cols = data.shape[1]
-	n_cur_rows = data.shape[0]
 
 	n_new_cols = n_cur_cols * sequence_length
 	n_new_rows = n_cur_rows / sequence_length
@@ -73,28 +76,69 @@ def group_single_timestep_data_into_sequences(timestep_data, sequence_length):
 	return sequences.tolist()
 
 def column_stack_with_concatenate(data_1, data_2):
+	"""
+	:description: column stacks two arrays. Not using np.column_stack b/c may be different lengths
+
+	>>> data_1 = [[1,2],[3,4]]
+	>>> data_2 = [['a','b'],['c','d']]
+	>>> column_stack_with_concatenate(data_1, data_2)
+	[[1,2,'a','b'],[3,4,'c','d']]
+
+	"""
 	return [i + j for i,j in zip(data_1, data_2)]
 
+def create_sample_from_features(data_1, data_2, sequence_length):
+	"""
+	:description: chains the calls to group_single_timestep_data_into_sequences() and column_stack_with_concatenate() for a given pair of data arrays. Mostly for easier testing.
+	"""
+	data_1 = group_single_timestep_data_into_sequences(data_1, sequence_length)
+	data_2 = group_single_timestep_data_into_sequences(data_2, sequence_length)
+	sample = column_stack_with_concatenate(data_1, data_2)
+	return sample
+
 def create_samples_from_feature_files(pairs, sequence_length):
-	"""
-	:description: main function that takes a list of tuples (pairs) of filenames and returns the data from those files in the form of data samples. 
-	"""
 	samples = []
 	for pair in pairs:
-		print('processing pair: {}'.format(pair))
-		p1_data = file_utils.read_data(pair[0])
-		p2_data = file_utils.read_data(pair[1])
-
-		# if either file is empty then ignore this pair
-		if not p1_data or not p2_data:
+		# load the data for this pair
+		data_1 = file_utils.read_data(pair[0])
+		data_2 = file_utils.read_data(pair[1])
+		if not data_1 or not data_2:
 			continue
-
-		p1_sequence_data = group_single_timestep_data_into_sequences(p1_data, sequence_length)
-		p2_sequence_data = group_single_timestep_data_into_sequences(p2_data, sequence_length)
-
-		sample = column_stack_with_concatenate(p1_sequence_data, p2_sequence_data)
+		sample = create_sample_from_features(data_1, data_2, sequence_length)
 		samples += sample
-	return np.array(samples)
+	return samples
+
+
+# def create_samples_from_feature_files(pairs, sequence_length):
+# 	"""
+# 	:description: main function that takes a list of tuples (pairs) of filenames and returns the data from those files in the form of data samples. 
+# 	"""
+# 	samples = []
+# 	for pair in pairs:
+# 		pair_data = []
+# 		for file in pair:
+# 			data = file_utils.read_data(file)
+# 			sequence_data = group_single_timestep_data_into_sequences(data, sequence_length)
+# 			pair_data.append(sequence_data)
+# 		# print('processing pair: {}'.format(pair))
+# 		# p1_data = file_utils.read_data(pair[0])
+# 		# p2_data = file_utils.read_data(pair[1])
+
+# 		# # if either file is empty then ignore this pair
+# 		# if not p1_data or not p2_data:
+# 		# 	continue
+
+# 		# p1_sequence_data = group_single_timestep_data_into_sequences(p1_data, sequence_length)
+# 		# p2_sequence_data = group_single_timestep_data_into_sequences(p2_data, sequence_length)
+
+# 		# sample = column_stack_with_concatenate(p1_sequence_data, p2_sequence_data)
+# 		# samples += sample
+# 		if not pair_data[0] or not pair_data[1]:
+# 			continue
+# 		column_stack_with_concatenate(pair_data[0], pair_data[1])
+# 		samples += create_sample_from_feature_files(pair, sequence_length)
+# 	return np.array(samples)
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -112,8 +156,8 @@ if __name__ == '__main__':
 
 	filepaths = file_utils.load_filenames_from_directory(feature_directory)
 	pairs = get_filepath_pairs_by_interaction(filepaths)
-	sample_data = create_samples_from_feature_files(pairs, sequence_length)
+	samples = create_samples_from_feature_files(pairs, sequence_length)
 
-	np.save(output_filepath, sample_data)
-	#np.savetxt(output_filepath, sample_data, delimiter=',')
-	#file_utils.write_data_to_file(sample_data, output_filepath)
+	np.save(output_filepath, samples)
+	#np.savetxt(output_filepath, samples, delimiter=',')
+	#file_utils.write_data_to_file(samples, output_filepath)

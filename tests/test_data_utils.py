@@ -109,6 +109,43 @@ class TestDataUtils(unittest.TestCase):
 		expected = np.array([[1,2,2,3,3,4,4,5]])
 		self.assertTrue(np.array_equal(actual, expected))
 
+	""" column_stack_with_concatenate tests """
+
+
+	""" create_sample_from_features """
+	def test_create_sample_from_features_empty_data(self):
+		data_1 = []
+		data_2 = []
+		sequence_length = 2
+		with self.assertRaises(IndexError):
+			actual = data_utils.create_sample_from_features(data_1, data_2, sequence_length)
+
+	def test_create_sample_from_features_single_col_feature(self):
+		data_1 = [[1],[2],[3],[4]]
+		data_2 = [[5],[6],[7],[8]]
+		sequence_length = 2
+		actual = data_utils.create_sample_from_features(data_1, data_2, sequence_length)
+		expected = [[1,2,5,6],[3,4,7,8]]
+		self.assertTrue(np.array_equal(actual, expected))
+
+	def test_create_sample_from_features_single_col_feature_increase_seq_len(self):
+		data_1 = [[1],[2],[3],[4]]
+		data_2 = [[5],[6],[7],[8]]
+		sequence_length = 4
+		actual = data_utils.create_sample_from_features(data_1, data_2, sequence_length)
+		expected = [[1,2,3,4,5,6,7,8]]
+		self.assertTrue(np.array_equal(actual, expected))
+
+	def test_create_sample_from_features_multi_col_feature(self):
+		data_1 = [[1,2],[2,3],[3,4],[4,5]]
+		data_2 = [[5,6],[6,7],[7,8],[8,9]]
+		sequence_length = 2
+		actual = data_utils.create_sample_from_features(data_1, data_2, sequence_length)
+		expected = [[1,2,2,3,5,6,6,7],[3,4,4,5,7,8,8,9]]
+		self.assertTrue(np.array_equal(actual, expected))
+
+
+
 if __name__ == '__main__':
 	suite = unittest.TestLoader().loadTestsFromTestCase(TestDataUtils)
 	unittest.TextTestRunner(verbosity=2).run(suite)
