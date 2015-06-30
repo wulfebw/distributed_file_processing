@@ -73,7 +73,7 @@ def group_single_timestep_data_into_sequences(timestep_data, sequence_length):
 	return sequences.tolist()
 
 def column_stack_with_concatenate(data_1, data_2):
-	return [[i + j] for i,j in zip(data_1, data_2)]
+	return [i + j for i,j in zip(data_1, data_2)]
 
 def create_samples_from_feature_files(pairs, sequence_length):
 	"""
@@ -81,6 +81,7 @@ def create_samples_from_feature_files(pairs, sequence_length):
 	"""
 	samples = []
 	for pair in pairs:
+		print('processing pair: {}'.format(pair))
 		p1_data = file_utils.read_data(pair[0])
 		p2_data = file_utils.read_data(pair[1])
 
@@ -113,4 +114,6 @@ if __name__ == '__main__':
 	pairs = get_filepath_pairs_by_interaction(filepaths)
 	sample_data = create_samples_from_feature_files(pairs, sequence_length)
 
-	file_utils.write_data_to_file(sample_data, output_filepath)
+	np.save(output_filepath, sample_data)
+	#np.savetxt(output_filepath, sample_data, delimiter=',')
+	#file_utils.write_data_to_file(sample_data, output_filepath)

@@ -83,7 +83,7 @@ def read_data(input_filename):
 	data = []
 	try:
 		with open(input_filename, 'r') as csvfile:
-			reader = csv.reader(csvfile, delimiter=' ')
+			reader = csv.reader(csvfile, delimiter=',')
 			for row in reader:
 				data.append(map(float,row))
 	except IOError as e:
