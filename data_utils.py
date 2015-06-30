@@ -96,15 +96,18 @@ def create_sample_from_features(data_1, data_2, sequence_length):
 	sample = column_stack_with_concatenate(data_1, data_2)
 	return sample
 
-def create_samples_from_feature_files(pairs, sequence_length):
+def create_samples_from_feature_files(pairs, sequence_length, output_filepath):
+	"""
+	:description: 
+	"""
 	samples = []
 	for pair in pairs:
-		# load the data for this pair
 		data_1 = file_utils.read_data(pair[0])
 		data_2 = file_utils.read_data(pair[1])
 		if not data_1 or not data_2:
 			continue
 		sample = create_sample_from_features(data_1, data_2, sequence_length)
+		#file_utils.append_sample(output_filepath, sample)
 		samples += sample
 	return samples
 
@@ -156,7 +159,8 @@ if __name__ == '__main__':
 
 	filepaths = file_utils.load_filenames_from_directory(feature_directory)
 	pairs = get_filepath_pairs_by_interaction(filepaths)
-	samples = create_samples_from_feature_files(pairs, sequence_length)
+	# samples = create_samples_from_feature_files(pairs, sequence_length)
+	samples = create_samples_from_feature_files(pairs, sequence_length, output_filepath)
 
 	np.save(output_filepath, samples)
 	#np.savetxt(output_filepath, samples, delimiter=',')
