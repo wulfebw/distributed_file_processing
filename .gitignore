@@ -51,3 +51,12 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+# data
+*.jpg
+*.Avi
+*.avi
+*.csv
+
+# models
+*.caffemodel

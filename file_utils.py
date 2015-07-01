@@ -2,8 +2,16 @@ import os
 import sys
 import csv
 import glob
+import errno
+import shutil
+import zipfile
+
+import numpy as np
 
 def make_directory(directory_path):
+	"""
+	:description:
+	"""
 	# create the output directory if it does not already exist
 	try:
 		# makes the dir
@@ -13,9 +21,43 @@ def make_directory(directory_path):
 		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
 			pass
 
+def empty_directory(dir):
+	"""
+	:description:
+	"""
+	shutil.rmtree(dir)
+	make_directory(dir)
+
+# def delete_previous_output_and_input_file(self):
+# 	# maybe better as reset directory
+# 		"""
+# 		:description: delete the input and output files/directories and then remake them
+# 		"""
+# 		print("delete_previous_output_and_input_file")
+# 		# delete the input and output directories
+# 		shutil.rmtree(self.input_dir)
+# 		shutil.rmtree(self.output_dir)
+
+# 		# remake them
+# 		make_directory(self.input_dir)
+# 		make_directory(self.output_dir)
+
+def create_empty_file(filepath):
+	"""
+	:description: 
+	"""
+	open(path, 'w').close()
+
 def get_frame_name_from_filename(filename):
+	"""
+	:description:
+	"""
 	video_name = os.path.splitext(os.path.basename(filename))[0]
 	return video_name
+
+def load_filenames_from_directory(directory, filter_string='*'):
+	search_string = '{0}/{1}'.format(directory, filter_string)
+	return glob.glob(search_string)
 
 def load_system_variables():
 	"""
@@ -43,38 +85,19 @@ def load_system_variables():
 
 	return system_variable_values
 
-def create_empty_file(filepath):
-	open(path, 'w').close()
-
-def zip_output(self):
-		zipf = zipfile.ZipFile('/home/ec2-user/output.zip', 'w')
-		for root, dirs, files in os.walk(self.output_dir):
-			for file in files:
-				zipname = get_frame_name_from_filename(file) + '.zip'
-				zipname = os.path.join('/home/ec2-user/output', zipname)
-				zipf.write(os.path.join('/home/ec2-user/output', file))
+def zip_output(output_dir):
+	"""
+	:description:
+	"""
+	zipf = zipfile.ZipFile('/home/ec2-user/output.zip', 'w')
+	for root, dirs, files in os.walk(output_dir):
+		for file in files:
+			zipname = get_frame_name_from_filename(file) + '.zip'
+			zipname = os.path.join('/home/ec2-user/output', zipname)
+			zipf.write(os.path.join('/home/ec2-user/output', file))
 
 def unzip_file(self):
 	raise NotImplementedError
-
-def delete_previous_output_and_input_file(self):
-	# maybe better as reset directory
-		"""
-		:description: delete the input and output files/directories and then remake them
-		"""
-		print("delete_previous_output_and_input_file")
-		# delete the input and output directories
-		shutil.rmtree(self.input_dir)
-		shutil.rmtree(self.output_dir)
-
-		# remake them
-		make_directory(self.input_dir)
-		make_directory(self.output_dir)
-
-
-def load_filenames_from_directory(directory, filter_string='*'):
-	search_string = '{0}/{1}'.format(directory, filter_string)
-	return glob.glob(search_string)
 
 def read_data(input_filename):
 	"""
@@ -83,9 +106,10 @@ def read_data(input_filename):
 	data = []
 	try:
 		with open(input_filename, 'r') as csvfile:
-			reader = csv.reader(csvfile, delimiter=',')
-			for row in reader:
-				data.append(map(float,row))
+			reader = csv.reader(csvfile, delimiter=' ')
+			for index, row in enumerate(reader):
+				if index % 30 == 0:
+					data.append(map(float,row))
 	except IOError as e:
 		raise IOError('input filename: {} raised IOError on read'.format(input_filename))
 	return data
@@ -99,4 +123,10 @@ def write_data_to_file(data, output_filename):
 		writer = csv.writer(csvfile, delimiter=',')
 		for row in data:
 			writer.writerow(row)
+
+def append_sample(output_filepath, sample):
+	print("append_sample")
+	print(sample)
+	with open(output_filepath, 'ab') as f:
+		np.save(f, sample)
 	

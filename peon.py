@@ -52,45 +52,49 @@ import subprocess
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-def make_directory(directory_path):
-	# create the output directory if it does not already exist
-	try:
-		# makes the dir
-		os.makedirs(directory_path)
-	except OSError as exc: 
-		# if the exception is that the directory exists, ignore it so long as it is in fact a directory
-		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
-			pass
+import strategies
+import s3_utility
+import file_utils
 
-def get_frame_name_from_filename(filename):
-	video_name = os.path.splitext(os.path.basename(filename))[0]
-	return video_name
+# def make_directory(directory_path):
+# 	# create the output directory if it does not already exist
+# 	try:
+# 		# makes the dir
+# 		os.makedirs(directory_path)
+# 	except OSError as exc: 
+# 		# if the exception is that the directory exists, ignore it so long as it is in fact a directory
+# 		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
+# 			pass
 
-def load_system_variables():
-	"""
-	:description: load in environment variables passed in by the master node. The checking here is less comprehensive, because it is assumed that certain checks have already been made (e.g., that the buckets exist). Those checks in master node will prevent peon from entering some undesirable state (and if they don't then something has gone wrong there, not here).
-	"""
-	system_variable_names = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'INPUT_S3_BUCKET', 'OUTPUT_S3_BUCKET', 'PROCESSED_S3_BUCKET', 'DATA_GROUP', 'PROCESSING_OPERATION', 'AWS_REGION']
-	system_variable_values = []
+# def get_frame_name_from_filename(filename):
+# 	video_name = os.path.splitext(os.path.basename(filename))[0]
+# 	return video_name
 
-	# instance id is checked differently than the other env variables
-	# instance_id = os.environ.get('EC2_INSTANCE_ID')
-	# assert instance_id is not None, "EC2_INSTANCE_ID does not exist"
-	# try:
-	# 	instance_id = instance_id.split(' ')[1]
-	# except Exception as e:
-	# 	print("instance id: {} is not in the expected form of \'instance-id: i-5a4e07ad\'".format(instance_id))
-	# 	raise(e)
-	# system_variable_values.append(instance_id), let's just sweep this for a bit
-	system_variable_values.append("instance-id: i-62f0a495")
+# def load_system_variables():
+# 	"""
+# 	:description: load in environment variables passed in by the master node. The checking here is less comprehensive, because it is assumed that certain checks have already been made (e.g., that the buckets exist). Those checks in master node will prevent peon from entering some undesirable state (and if they don't then something has gone wrong there, not here).
+# 	"""
+# 	system_variable_names = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'INPUT_S3_BUCKET', 'OUTPUT_S3_BUCKET', 'PROCESSED_S3_BUCKET', 'DATA_GROUP', 'PROCESSING_OPERATION', 'AWS_REGION']
+# 	system_variable_values = []
 
-	# each of the remaining environment variables is checked in the same way so loop through them
-	for name in system_variable_names:
-		variable = os.environ.get(name)
-		assert variable is not None, "{} does not exist".format(name)
-		system_variable_values.append(variable)
+# 	# instance id is checked differently than the other env variables
+# 	# instance_id = os.environ.get('EC2_INSTANCE_ID')
+# 	# assert instance_id is not None, "EC2_INSTANCE_ID does not exist"
+# 	# try:
+# 	# 	instance_id = instance_id.split(' ')[1]
+# 	# except Exception as e:
+# 	# 	print("instance id: {} is not in the expected form of \'instance-id: i-5a4e07ad\'".format(instance_id))
+# 	# 	raise(e)
+# 	# system_variable_values.append(instance_id), let's just sweep this for a bit
+# 	system_variable_values.append("instance-id: i-62f0a495")
 
-	return system_variable_values
+# 	# each of the remaining environment variables is checked in the same way so loop through them
+# 	for name in system_variable_names:
+# 		variable = os.environ.get(name)
+# 		assert variable is not None, "{} does not exist".format(name)
+# 		system_variable_values.append(variable)
+
+# 	return system_variable_values
 
 
 class Peon(object):
@@ -106,8 +110,7 @@ class Peon(object):
 
 	def __init__(self,
 			instance_id,
-			access_key,
-			secret_key,
+			s3_utility
 			input_s3_bucket,
 			output_s3_bucket,
 			processed_s3_bucket, 
@@ -119,8 +122,9 @@ class Peon(object):
 			):
 
 		self.id = instance_id
-		self.access_key = access_key
-		self.secret_key = secret_key
+		# self.access_key = access_key
+		# self.secret_key = secret_key
+		self.s3_utility = s3_utility
 		self.input_s3_bucket = input_s3_bucket
 		self.output_s3_bucket = output_s3_bucket
 		self.processed_s3_bucket = processed_s3_bucket
@@ -134,64 +138,64 @@ class Peon(object):
 		self.upload_count = 0
 		self.files_to_process = self.load_file_list_from_bucket(self.input_s3_bucket)
 
-	def get_conn(self):
-		if self.conn:
-			return self.conn
-		else:
-			return S3Connection(self.access_key, self.secret_key)
+	# def get_conn(self):
+	# 	if self.conn:
+	# 		return self.conn
+	# 	else:
+	# 		return S3Connection(self.access_key, self.secret_key)
 
-	def load_file_list_from_bucket(self, bucket):
-		"""
-		:description: loads the list of files to process based on the data group id and then checks this list for files that have already been processed, removes those that have been from the list
-		"""
-		print("load_file_list_from_bucket")
-		# create a connection to s3
-		# conn = S3Connection(self.access_key, self.secret_key)
+	# def load_file_list_from_bucket(self, bucket):
+	# 	"""
+	# 	:description: loads the list of files to process based on the data group id and then checks this list for files that have already been processed, removes those that have been from the list
+	# 	"""
+	# 	print("load_file_list_from_bucket")
+	# 	# create a connection to s3
+	# 	# conn = S3Connection(self.access_key, self.secret_key)
 
-		# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-		bucket = self.get_conn().get_bucket(bucket)
+	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
+	# 	bucket = self.get_conn().get_bucket(bucket)
 
-		# collect the list of files to process - those that start with the data group id
-		file_list = []
-		for key in bucket.list():
-			if key.name.encode('utf-8').startswith(self.data_group_id):
-				file_list.append(key.name.encode('utf-8'))
+	# 	# collect the list of files to process - those that start with the data group id
+	# 	file_list = []
+	# 	for key in bucket.list():
+	# 		if key.name.encode('utf-8').startswith(self.data_group_id):
+	# 			file_list.append(key.name.encode('utf-8'))
 
-		return file_list
+	# 	return file_list
 
-	def load_file(self, s3_bucket, file_to_load, local_save_dir):
-		"""
-		:description: load a file from a given s3 bucket with a given name to a given local dir
+	# def load_file(self, s3_bucket, file_to_load, local_save_dir):
+	# 	"""
+	# 	:description: load a file from a given s3 bucket with a given name to a given local dir
 
-		:type s3_bucket: string
-		:param s3_bucket: s3 bucket from which to load the file
+	# 	:type s3_bucket: string
+	# 	:param s3_bucket: s3 bucket from which to load the file
 
-		:type file_to_load: string
-		:param file_to_load: the file to load
+	# 	:type file_to_load: string
+	# 	:param file_to_load: the file to load
 
-		:type local_save_dir: string
-		:param local_save_dir: the local dir to which to save the downloaded file
-		"""
-		print("load_file")
-		# create a connection to s3
-		#conn = S3Connection(self.access_key, self.secret_key)
+	# 	:type local_save_dir: string
+	# 	:param local_save_dir: the local dir to which to save the downloaded file
+	# 	"""
+	# 	print("load_file")
+	# 	# create a connection to s3
+	# 	#conn = S3Connection(self.access_key, self.secret_key)
 
-		# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-		bucket = self.get_conn().get_bucket(s3_bucket)
+	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
+	# 	bucket = self.get_conn().get_bucket(s3_bucket)
 
-		# set a key to the processed files list
-		key = Key(bucket, file_to_load)
+	# 	# set a key to the processed files list
+	# 	key = Key(bucket, file_to_load)
 
-		# download the file to process and save in the input location
-		save_location = os.path.join(local_save_dir, key.name.encode('utf-8'))
-		try:
-			key.get_contents_to_filename(save_location)
-		except boto.exception.S3ResponseError as e:
-			print("key name: {} failed".format(key.name.encode('utf-8')))
-			raise(e)
+	# 	# download the file to process and save in the input location
+	# 	save_location = os.path.join(local_save_dir, key.name.encode('utf-8'))
+	# 	try:
+	# 		key.get_contents_to_filename(save_location)
+	# 	except boto.exception.S3ResponseError as e:
+	# 		print("key name: {} failed".format(key.name.encode('utf-8')))
+	# 		raise(e)
 
-		# return the location of the downloaded file
-		return save_location
+	# 	# return the location of the downloaded file
+	# 	return save_location
 
 	def file_already_processed(self, filename):
 		"""
@@ -202,35 +206,35 @@ class Peon(object):
 		"""
 		print("file_already_processed")
 		# load the processed files from the processed files bucket
-		processed_files = self.load_file_list_from_bucket(self.processed_s3_bucket)
+		processed_files = self.s3_utility.load_file_list_from_bucket(self.processed_s3_bucket)
 
 		# if the file to process is in the processed files, return true
 		return filename in processed_files
 
-	def upload_file(self, s3_bucket, filename_to_save_as, file_path):
-		"""
-		:description: uploads a single file to an s3 bucket
+	# def upload_file(self, s3_bucket, filename_to_save_as, file_path):
+	# 	"""
+	# 	:description: uploads a single file to an s3 bucket
 
-		:type s3_bucket: string
-		:param s3_bucket: name of the s3 bucket to which the file should be uploaded
-		"""
-		self.upload_count += 1
-		print(self.upload_count)
-		# what is this?
-		def percent_cb(complete, total):
-			sys.stdout.write('.')
-			sys.stdout.flush()
+	# 	:type s3_bucket: string
+	# 	:param s3_bucket: name of the s3 bucket to which the file should be uploaded
+	# 	"""
+	# 	self.upload_count += 1
+	# 	print(self.upload_count)
+	# 	# what is this?
+	# 	def percent_cb(complete, total):
+	# 		sys.stdout.write('.')
+	# 		sys.stdout.flush()
 
-		# create a connection to s3
-		#conn = S3Connection(self.access_key, self.secret_key)
+	# 	# create a connection to s3
+	# 	#conn = S3Connection(self.access_key, self.secret_key)
 
-		# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-		bucket = self.get_conn().get_bucket(s3_bucket)
+	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
+	# 	bucket = self.get_conn().get_bucket(s3_bucket)
 
-		# send the file to the s3 bucket
-		key = Key(bucket)
-		key.key = filename_to_save_as
-		key.set_contents_from_filename(file_path, cb=percent_cb, num_cb=50)
+	# 	# send the file to the s3 bucket
+	# 	key = Key(bucket)
+	# 	key.key = filename_to_save_as
+	# 	key.set_contents_from_filename(file_path, cb=percent_cb, num_cb=50)
 
 	def report_file_finished_processing(self):
 		"""
@@ -242,15 +246,15 @@ class Peon(object):
 		f = open(path, 'w').close()
 
 		# uplaod the file
-		self.upload_file(self.processed_s3_bucket, self.current_filename, path)
+		self.s3_utility.upload_file(self.processed_s3_bucket, self.current_filename, path)
 
-	def zip_output(self):
-		zipf = zipfile.ZipFile('/home/ec2-user/output.zip', 'w')
-		for root, dirs, files in os.walk(self.output_dir):
-			for file in files:
-				zipname = get_frame_name_from_filename(file) + '.zip'
-				zipname = os.path.join('/home/ec2-user/output', zipname)
-				zipf.write(os.path.join('/home/ec2-user/output', file))
+	# def zip_output(self):
+	# 	zipf = zipfile.ZipFile('/home/ec2-user/output.zip', 'w')
+	# 	for root, dirs, files in os.walk(self.output_dir):
+	# 		for file in files:
+	# 			zipname = get_frame_name_from_filename(file) + '.zip'
+	# 			zipname = os.path.join('/home/ec2-user/output', zipname)
+	# 			zipf.write(os.path.join('/home/ec2-user/output', file))
 
 	def upload_output(self):
 		"""
@@ -261,20 +265,20 @@ class Peon(object):
 		# 	for f in files:
 		# 		self.upload_file(self.output_s3_bucket, f, os.path.join(root, f))
 		zip_name = get_frame_name_from_filename(self.current_filename) + '.zip'
-		self.upload_file(self.output_s3_bucket, zip_name, '/home/ec2-user/output.zip')
+		self.s3_utility.upload_file(self.output_s3_bucket, zip_name, '/home/ec2-user/output.zip')
 
-	def delete_previous_output_and_input_file(self):
-		"""
-		:description: delete the input and output files/directories and then remake them
-		"""
-		print("delete_previous_output_and_input_file")
-		# delete the input and output directories
-		shutil.rmtree(self.input_dir)
-		shutil.rmtree(self.output_dir)
+	# def delete_previous_output_and_input_file(self):
+	# 	"""
+	# 	:description: delete the input and output files/directories and then remake them
+	# 	"""
+	# 	print("delete_previous_output_and_input_file")
+	# 	# delete the input and output directories
+	# 	shutil.rmtree(self.input_dir)
+	# 	shutil.rmtree(self.output_dir)
 
-		# remake them
-		make_directory(self.input_dir)
-		make_directory(self.output_dir)
+	# 	# remake them
+	# 	make_directory(self.input_dir)
+	# 	make_directory(self.output_dir)
 
 	def terminate(self):
 		"""
@@ -308,13 +312,13 @@ class Peon(object):
 		self.current_filename = filename
 
 		# load file into this ec2 instance
-		self.load_file(self.input_s3_bucket, self.current_filename, self.input_dir)
+		self.s3_utility.download_file(self.input_s3_bucket, self.current_filename, self.input_dir)
 
 		# call the processing_strategy
 		self.processing_strategy(self.current_filename, self.input_dir, self.output_dir)
 
 		# zip output files
-		self.zip_output()
+		file_utils.zip_output()
 
 		# upload processed data to the output s3 bucket
 		self.upload_output()
@@ -323,57 +327,60 @@ class Peon(object):
 		self.report_file_finished_processing()
 
 		# delete current processing output and input file
-		self.delete_previous_output_and_input_file()
+		# self.delete_previous_output_and_input_file()
+		file_utils.empty_directory(self.input_dir)
+		file_utils.empty_directory(self.output_dir)
 
 
-def extract_frames(filename, input_dir, output_dir):
-	# determine the base name of this filename for use in building the output filename
-	filename_base = get_frame_name_from_filename(filename)
 
-	# set the base path of the output files
-	output_filepath_base = os.path.join(output_dir, filename_base)
+# def extract_frames(filename, input_dir, output_dir):
+# 	# determine the base name of this filename for use in building the output filename
+# 	filename_base = get_frame_name_from_filename(filename)
 
-	# set the file path of the input file
-	input_filepath = os.path.join(input_dir, filename)
+# 	# set the base path of the output files
+# 	output_filepath_base = os.path.join(output_dir, filename_base)
 
-	# set the frames per second
-	frames_per_second = 30
+# 	# set the file path of the input file
+# 	input_filepath = os.path.join(input_dir, filename)
 
-	# set the call string
-	call_str = 'ffmpeg -i {0} -r {1} {2}_%03d.jpg'.format(input_filepath, frames_per_second, output_filepath_base)
-	FNULL = open(os.devnull, 'w')
+# 	# set the frames per second
+# 	frames_per_second = 30
 
-	# call the subprocess
-	subprocess.call(call_str, shell=True, stderr=subprocess.STDOUT)
+# 	# set the call string
+# 	call_str = 'ffmpeg -i {0} -r {1} {2}_%03d.jpg'.format(input_filepath, frames_per_second, output_filepath_base)
+# 	FNULL = open(os.devnull, 'w')
 
-def extract_visual_features(filename, input_dir, output_dir):
-	raise NotImplementedError("feature extraction not yet implemented")
+# 	# call the subprocess
+# 	subprocess.call(call_str, shell=True, stderr=subprocess.STDOUT)
 
-class StrategyFactory(object):
-	"""
-	:description: in python, a factory can be a dictionary that maps identifiers to either classes or functions. I'm making this a class in order to keep the error handling out of the main function.
-	"""
+# def extract_visual_features(filename, input_dir, output_dir):
+# 	raise NotImplementedError("feature extraction not yet implemented")
 
-	def __init__(self):
-		self.strategies = dict()
+# class StrategyFactory(object):
+# 	"""
+# 	:description: in python, a factory can be a dictionary that maps identifiers to either classes or functions. I'm making this a class in order to keep the error handling out of the main function.
+# 	"""
 
-	def register(self, id, strategy):
-		"""
-		:description: registers a strategy with the factory - overwrites previous strategies with the same id and ids can be anything
+# 	def __init__(self):
+# 		self.strategies = dict()
 
-		:type id: anything?
-		:param id: the id used to retrieve a given strategy
+# 	def register(self, id, strategy):
+# 		"""
+# 		:description: registers a strategy with the factory - overwrites previous strategies with the same id and ids can be anything
 
-		:type strategy: a function
-		:param strategy: the function to call as the strategy
-		"""
-		self.strategies[id] = strategy
+# 		:type id: anything?
+# 		:param id: the id used to retrieve a given strategy
 
-	def get_strategy(self, id):
-		try:
-			return self.strategies[id]
-		except KeyError as e:
-			raise KeyError("the provided strategy id does not exist or is not registered")
+# 		:type strategy: a function
+# 		:param strategy: the function to call as the strategy
+# 		"""
+# 		self.strategies[id] = strategy
+
+# 	def get_strategy(self, id):
+# 		try:
+# 			return self.strategies[id]
+# 		except KeyError as e:
+# 			raise KeyError("the provided strategy id does not exist or is not registered")
 
 if __name__ == '__main__':
 	"""
@@ -389,13 +396,13 @@ if __name__ == '__main__':
 	f = open("script_ran.txt", 'w').close()
 
 	# initialize the "strategy factory", which is just a dict() in python (in this case wrapped in a class to handle key validation)
-	strategy_factory = StrategyFactory()
-	strategy_factory.register('extract_frames', extract_frames)
-	strategy_factory.register('extract_visual_features', extract_visual_features)
+	strategy_factory = strategies.StrategyFactory()
+	strategy_factory.register('extract_frames', strategies.extract_frames)
+	strategy_factory.register('extract_visual_features', strategies.extract_visual_features)
 
 	# load variables passed to the instance
-	system_variables = load_system_variables()
-	print(system_variables)
+	system_variables = file_utils.load_system_variables()
+
 	instance_id = system_variables[0]
 	access_key = system_variables[1]
 	secret_key = system_variables[2]
@@ -417,11 +424,15 @@ if __name__ == '__main__':
 	make_directory(input_dir)
 	make_directory(processed_dir)
 
+	# create the s3 utility for the peon to use
+	s3_util = s3_utility.S3Utility(access_key, secret_key)
+
 	# load system parameters set by master node into local variables to use in init of peon
 	peon = Peon(
 		instance_id,
-		access_key,
-		secret_key,
+		# access_key,
+		# secret_key,
+		s3_util,
 		input_s3_bucket,
 		output_s3_bucket,
 		processed_s3_bucket,
