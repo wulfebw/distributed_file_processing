@@ -28,7 +28,6 @@ class TestExtractVisualFeatures(unittest.TestCase):
 	def test_sort_img_paths_valid_basic_sort(self):
 		img_paths = ['/test/test/0209_f01_m01_400.jpg', '/test/test/0209_f01_m01_3000.jpg', '/test/test/0209_f01_m01_24.jpg']
 		actual = extract_visual_features.sort_img_paths(img_paths)
-		print actual
 		expected = ['/test/test/0209_f01_m01_24.jpg', '/test/test/0209_f01_m01_400.jpg','/test/test/0209_f01_m01_3000.jpg']
 		self.assertEquals(actual, expected)
 
@@ -46,7 +45,28 @@ class TestExtractVisualFeatures(unittest.TestCase):
 
 	""" crop_image tests """
 	def test_crop_image_valid_central_crop(self):
-		pass
+		img = np.array(xrange(4*4*3)).reshape(4,4,3)
+		actual = extract_visual_features.crop_image(img, 2, 2)
+		expected = [[[15,16,17],[18,19,20]],[[27,28,29],[30,31,32]]]
+		self.assertTrue(np.array_equal(actual, expected))
+
+	def test_crop_image_valid_oversized_crop(self):
+		img = np.array(xrange(4*4*3)).reshape(4,4,3)
+		actual = extract_visual_features.crop_image(img, 5, 5)
+		expected = img
+		self.assertTrue(np.array_equal(actual, expected))
+
+	def test_crop_image_valid_undersized_crop(self):
+		img = np.array(xrange(4*4*3)).reshape(4,4,3)
+		actual = extract_visual_features.crop_image(img, -1, -1)
+		expected = img
+		self.assertTrue(np.array_equal(actual, expected))
+
+	def test_crop_image_valid_exact_sized_crop(self):
+		img = np.array(xrange(4*4*3)).reshape(4,4,3)
+		actual = extract_visual_features.crop_image(img, 4, 4)
+		expected = img
+		self.assertTrue(np.array_equal(actual, expected))
 
 	""" extract_visual_features test """
 	def test_extract_visual_features_single_valid_extraction(self):
@@ -54,5 +74,5 @@ class TestExtractVisualFeatures(unittest.TestCase):
 
 if __name__ == '__main__':
 	suite = unittest.TestLoader().loadTestsFromTestCase(TestExtractVisualFeatures)
-	unittest.TextTestRunner(verbosity=2).run(suite)
+	unittest.TextTestRunner(verbosity=1).run(suite)
 
