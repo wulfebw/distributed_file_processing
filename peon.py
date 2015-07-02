@@ -51,47 +51,6 @@ from strategies import strategy_factory, extract_frames, extract_visual_features
 import s3_utility
 import file_utils
 
-# def make_directory(directory_path):
-# 	# create the output directory if it does not already exist
-# 	try:
-# 		# makes the dir
-# 		os.makedirs(directory_path)
-# 	except OSError as exc: 
-# 		# if the exception is that the directory exists, ignore it so long as it is in fact a directory
-# 		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
-# 			pass
-
-# def get_frame_name_from_filename(filename):
-# 	video_name = os.path.splitext(os.path.basename(filename))[0]
-# 	return video_name
-
-# def load_system_variables():
-# 	"""
-# 	:description: load in environment variables passed in by the master node. The checking here is less comprehensive, because it is assumed that certain checks have already been made (e.g., that the buckets exist). Those checks in master node will prevent peon from entering some undesirable state (and if they don't then something has gone wrong there, not here).
-# 	"""
-# 	system_variable_names = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'INPUT_S3_BUCKET', 'OUTPUT_S3_BUCKET', 'PROCESSED_S3_BUCKET', 'DATA_GROUP', 'PROCESSING_OPERATION', 'AWS_REGION']
-# 	system_variable_values = []
-
-# 	# instance id is checked differently than the other env variables
-# 	# instance_id = os.environ.get('EC2_INSTANCE_ID')
-# 	# assert instance_id is not None, "EC2_INSTANCE_ID does not exist"
-# 	# try:
-# 	# 	instance_id = instance_id.split(' ')[1]
-# 	# except Exception as e:
-# 	# 	print("instance id: {} is not in the expected form of \'instance-id: i-5a4e07ad\'".format(instance_id))
-# 	# 	raise(e)
-# 	# system_variable_values.append(instance_id), let's just sweep this for a bit
-# 	system_variable_values.append("instance-id: i-62f0a495")
-
-# 	# each of the remaining environment variables is checked in the same way so loop through them
-# 	for name in system_variable_names:
-# 		variable = os.environ.get(name)
-# 		assert variable is not None, "{} does not exist".format(name)
-# 		system_variable_values.append(variable)
-
-# 	return system_variable_values
-
-
 class Peon(object):
 	"""
 	Class that runs on the nodes started by Master that process files
