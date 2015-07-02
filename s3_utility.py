@@ -1,4 +1,10 @@
+import os
+import sys
+import boto
 
+
+from boto.s3.key import Key
+from boto.s3.connection import S3Connection
 
 class S3Utility(object):
 	"""

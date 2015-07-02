@@ -40,19 +40,14 @@ refactoring questions to answer:
 import os
 import csv
 import sys
-import boto
 import errno
 import shutil
 import zipfile
 import boto.ec2
 import subprocess
 
-# from abc import ABCMeta, abstractmethod
-
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
-
 import strategies
+from strategies import strategy_factory, extract_frames, extract_visual_features
 import s3_utility
 import file_utils
 
@@ -110,7 +105,7 @@ class Peon(object):
 
 	def __init__(self,
 			instance_id,
-			s3_utility
+			s3_utility,
 			input_s3_bucket,
 			output_s3_bucket,
 			processed_s3_bucket, 
@@ -134,68 +129,8 @@ class Peon(object):
 		self.input_dir = input_dir
 		self.region = region
 		self.current_filename = ''
-		self.conn = S3Connection(access_key, secret_key)
 		self.upload_count = 0
-		self.files_to_process = self.load_file_list_from_bucket(self.input_s3_bucket)
-
-	# def get_conn(self):
-	# 	if self.conn:
-	# 		return self.conn
-	# 	else:
-	# 		return S3Connection(self.access_key, self.secret_key)
-
-	# def load_file_list_from_bucket(self, bucket):
-	# 	"""
-	# 	:description: loads the list of files to process based on the data group id and then checks this list for files that have already been processed, removes those that have been from the list
-	# 	"""
-	# 	print("load_file_list_from_bucket")
-	# 	# create a connection to s3
-	# 	# conn = S3Connection(self.access_key, self.secret_key)
-
-	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-	# 	bucket = self.get_conn().get_bucket(bucket)
-
-	# 	# collect the list of files to process - those that start with the data group id
-	# 	file_list = []
-	# 	for key in bucket.list():
-	# 		if key.name.encode('utf-8').startswith(self.data_group_id):
-	# 			file_list.append(key.name.encode('utf-8'))
-
-	# 	return file_list
-
-	# def load_file(self, s3_bucket, file_to_load, local_save_dir):
-	# 	"""
-	# 	:description: load a file from a given s3 bucket with a given name to a given local dir
-
-	# 	:type s3_bucket: string
-	# 	:param s3_bucket: s3 bucket from which to load the file
-
-	# 	:type file_to_load: string
-	# 	:param file_to_load: the file to load
-
-	# 	:type local_save_dir: string
-	# 	:param local_save_dir: the local dir to which to save the downloaded file
-	# 	"""
-	# 	print("load_file")
-	# 	# create a connection to s3
-	# 	#conn = S3Connection(self.access_key, self.secret_key)
-
-	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-	# 	bucket = self.get_conn().get_bucket(s3_bucket)
-
-	# 	# set a key to the processed files list
-	# 	key = Key(bucket, file_to_load)
-
-	# 	# download the file to process and save in the input location
-	# 	save_location = os.path.join(local_save_dir, key.name.encode('utf-8'))
-	# 	try:
-	# 		key.get_contents_to_filename(save_location)
-	# 	except boto.exception.S3ResponseError as e:
-	# 		print("key name: {} failed".format(key.name.encode('utf-8')))
-	# 		raise(e)
-
-	# 	# return the location of the downloaded file
-	# 	return save_location
+		self.files_to_process = self.s3_utility.download_file_list(self.input_s3_bucket)
 
 	def file_already_processed(self, filename):
 		"""
@@ -206,35 +141,10 @@ class Peon(object):
 		"""
 		print("file_already_processed")
 		# load the processed files from the processed files bucket
-		processed_files = self.s3_utility.load_file_list_from_bucket(self.processed_s3_bucket)
+		processed_files = self.s3_utility.download_file_list(self.processed_s3_bucket)
 
 		# if the file to process is in the processed files, return true
 		return filename in processed_files
-
-	# def upload_file(self, s3_bucket, filename_to_save_as, file_path):
-	# 	"""
-	# 	:description: uploads a single file to an s3 bucket
-
-	# 	:type s3_bucket: string
-	# 	:param s3_bucket: name of the s3 bucket to which the file should be uploaded
-	# 	"""
-	# 	self.upload_count += 1
-	# 	print(self.upload_count)
-	# 	# what is this?
-	# 	def percent_cb(complete, total):
-	# 		sys.stdout.write('.')
-	# 		sys.stdout.flush()
-
-	# 	# create a connection to s3
-	# 	#conn = S3Connection(self.access_key, self.secret_key)
-
-	# 	# select the bucket, where input_s3_bucket takes the form 'bsdsdata'
-	# 	bucket = self.get_conn().get_bucket(s3_bucket)
-
-	# 	# send the file to the s3 bucket
-	# 	key = Key(bucket)
-	# 	key.key = filename_to_save_as
-	# 	key.set_contents_from_filename(file_path, cb=percent_cb, num_cb=50)
 
 	def report_file_finished_processing(self):
 		"""
@@ -248,14 +158,6 @@ class Peon(object):
 		# uplaod the file
 		self.s3_utility.upload_file(self.processed_s3_bucket, self.current_filename, path)
 
-	# def zip_output(self):
-	# 	zipf = zipfile.ZipFile('/home/ec2-user/output.zip', 'w')
-	# 	for root, dirs, files in os.walk(self.output_dir):
-	# 		for file in files:
-	# 			zipname = get_frame_name_from_filename(file) + '.zip'
-	# 			zipname = os.path.join('/home/ec2-user/output', zipname)
-	# 			zipf.write(os.path.join('/home/ec2-user/output', file))
-
 	def upload_output(self):
 		"""
 		:description: upload all files in the output directory to s3
@@ -267,34 +169,12 @@ class Peon(object):
 		zip_name = get_frame_name_from_filename(self.current_filename) + '.zip'
 		self.s3_utility.upload_file(self.output_s3_bucket, zip_name, '/home/ec2-user/output.zip')
 
-	# def delete_previous_output_and_input_file(self):
-	# 	"""
-	# 	:description: delete the input and output files/directories and then remake them
-	# 	"""
-	# 	print("delete_previous_output_and_input_file")
-	# 	# delete the input and output directories
-	# 	shutil.rmtree(self.input_dir)
-	# 	shutil.rmtree(self.output_dir)
-
-	# 	# remake them
-	# 	make_directory(self.input_dir)
-	# 	make_directory(self.output_dir)
-
 	def terminate(self):
 		"""
 		:description: terminates this instance
 		"""
 		conn = boto.ec2.connect_to_region(self.region, aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
 		conn.terminate_instances(instance_ids=[self.id])
-
-	# def extract_frames(self):
-	# 	filename_base = get_frame_name_from_filename(self.current_filename)
-	# 	output_filepath_base = os.path.join(self.output_dir, filename_base)
-	# 	input_filename = os.path.join(self.input_dir, self.current_filename)
-	# 	frames_per_second = 30
-	# 	call_str = 'ffmpeg -i {0} -r {1} {2}_%03d.jpg'.format(input_filename, frames_per_second, output_filepath_base)
-	# 	FNULL = open(os.devnull, 'w')
-	# 	subprocess.call(call_str, shell=True, stderr=subprocess.STDOUT)
 
 	def process_file(self, filename):
 		"""
@@ -314,6 +194,9 @@ class Peon(object):
 		# load file into this ec2 instance
 		self.s3_utility.download_file(self.input_s3_bucket, self.current_filename, self.input_dir)
 
+		if self.processing_strategy == extract_visual_features.extract_visual_features:
+			file_utils.unzip_frames_directory(self.current_filename, self.input_dir)
+
 		# call the processing_strategy
 		self.processing_strategy(self.current_filename, self.input_dir, self.output_dir)
 
@@ -327,60 +210,8 @@ class Peon(object):
 		self.report_file_finished_processing()
 
 		# delete current processing output and input file
-		# self.delete_previous_output_and_input_file()
 		file_utils.empty_directory(self.input_dir)
 		file_utils.empty_directory(self.output_dir)
-
-
-
-# def extract_frames(filename, input_dir, output_dir):
-# 	# determine the base name of this filename for use in building the output filename
-# 	filename_base = get_frame_name_from_filename(filename)
-
-# 	# set the base path of the output files
-# 	output_filepath_base = os.path.join(output_dir, filename_base)
-
-# 	# set the file path of the input file
-# 	input_filepath = os.path.join(input_dir, filename)
-
-# 	# set the frames per second
-# 	frames_per_second = 30
-
-# 	# set the call string
-# 	call_str = 'ffmpeg -i {0} -r {1} {2}_%03d.jpg'.format(input_filepath, frames_per_second, output_filepath_base)
-# 	FNULL = open(os.devnull, 'w')
-
-# 	# call the subprocess
-# 	subprocess.call(call_str, shell=True, stderr=subprocess.STDOUT)
-
-# def extract_visual_features(filename, input_dir, output_dir):
-# 	raise NotImplementedError("feature extraction not yet implemented")
-
-# class StrategyFactory(object):
-# 	"""
-# 	:description: in python, a factory can be a dictionary that maps identifiers to either classes or functions. I'm making this a class in order to keep the error handling out of the main function.
-# 	"""
-
-# 	def __init__(self):
-# 		self.strategies = dict()
-
-# 	def register(self, id, strategy):
-# 		"""
-# 		:description: registers a strategy with the factory - overwrites previous strategies with the same id and ids can be anything
-
-# 		:type id: anything?
-# 		:param id: the id used to retrieve a given strategy
-
-# 		:type strategy: a function
-# 		:param strategy: the function to call as the strategy
-# 		"""
-# 		self.strategies[id] = strategy
-
-# 	def get_strategy(self, id):
-# 		try:
-# 			return self.strategies[id]
-# 		except KeyError as e:
-# 			raise KeyError("the provided strategy id does not exist or is not registered")
 
 if __name__ == '__main__':
 	"""
@@ -396,9 +227,9 @@ if __name__ == '__main__':
 	f = open("script_ran.txt", 'w').close()
 
 	# initialize the "strategy factory", which is just a dict() in python (in this case wrapped in a class to handle key validation)
-	strategy_factory = strategies.StrategyFactory()
-	strategy_factory.register('extract_frames', strategies.extract_frames)
-	strategy_factory.register('extract_visual_features', strategies.extract_visual_features)
+	strategy_factory = strategy_factory.StrategyFactory()
+	strategy_factory.register('extract_frames', extract_frames.extract_frames)
+	strategy_factory.register('extract_visual_features', extract_visual_features.extract_visual_features)
 
 	# load variables passed to the instance
 	system_variables = file_utils.load_system_variables()
@@ -414,15 +245,24 @@ if __name__ == '__main__':
 	processing_strategy = strategy_factory.get_strategy(system_variables[7])
 	region = system_variables[8]
 
-	# set constant variables
-	output_dir = '/home/ec2-user/output/'
-	input_dir = '/home/ec2-user/input/'
-	processed_dir = '/home/ec2-user/processed/'
+	
+	if sys.platform == 'linux2':
+		# set constant variables ec2
+		output_dir = '/home/ec2-user/output/'
+		input_dir = '/home/ec2-user/input/'
+		processed_dir = '/home/ec2-user/processed/'
+	else:
+		# set constant variables local
+		output_dir = 'processing/output/'
+		input_dir = 'processing/input/'
+		processed_dir = 'processing/processed/'
+
+
 
 	# make the directories
-	make_directory(output_dir)
-	make_directory(input_dir)
-	make_directory(processed_dir)
+	file_utils.make_directory(output_dir)
+	file_utils.make_directory(input_dir)
+	file_utils.make_directory(processed_dir)
 
 	# create the s3 utility for the peon to use
 	s3_util = s3_utility.S3Utility(access_key, secret_key)
@@ -430,8 +270,6 @@ if __name__ == '__main__':
 	# load system parameters set by master node into local variables to use in init of peon
 	peon = Peon(
 		instance_id,
-		# access_key,
-		# secret_key,
 		s3_util,
 		input_s3_bucket,
 		output_s3_bucket,
@@ -445,10 +283,8 @@ if __name__ == '__main__':
 
 	# while list of files to process is not empty execute the following loop
 	for f in peon.files_to_process:
-		# print f
-		print("\nFILENAME: {}".format(f))
 
-		# process the next file
+		print("\nFILENAME: {}".format(f))
 		peon.process_file(f)
 
 	# once processing completes, terminate this ec2 instance
