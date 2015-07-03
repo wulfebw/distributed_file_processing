@@ -5,6 +5,7 @@ import glob
 import errno
 import shutil
 import zipfile
+import scipy.io
 
 import numpy as np
 
@@ -60,14 +61,48 @@ def zip_output(output_dir):
 def unzip_file(filepath):
 	raise NotImplementedError
 
-def unzip_frames_directory(directory, filename):
+def correct_frames_directory(directory):
+	"""
+	:description: takes the files in ../directory/home/ec2-user/output and moves them to ../directory/
+	"""
+	path_to_dir_to_move = os.path.join(directory, 'home/ec2-user/output/')
+	files = glob.glob('{0}/*.jpg'.format(path_to_dir_to_move))
+	for f in files:
+		shutil.move(f, directory)
+	dir_to_remove = os.path.join(directory, 'home')
+	shutil.rmtree(dir_to_remove)
+
+def unzip_frames_directory(filename, directory):
 	"""
 	:description: extracts all of the files in the filepath archive, then fixes the file structure.
 	"""
 	filepath = os.path.join(directory, filename)
-	with ZipFile(filepath, 'r') as zipfile:
-		zipfile.extractall(directory)
+	with zipfile.ZipFile(filepath, 'r') as zf:
+		zf.extractall(directory)
+	correct_frames_directory(directory)
 
+def make_directory(directory_path):
+	"""
+	:description:
+	"""
+	# create the output directory if it does not already exist
+	try:
+		# makes the dir
+		os.makedirs(directory_path)
+	except OSError as exc: 
+		# if the exception is that the directory exists, ignore it so long as it is in fact a directory
+		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
+			pass
+		else:
+			print('unable to make directory: {}'.format(directory_path))
+			raise exc
+
+def empty_directory(dir):
+	"""
+	:description:
+	"""
+	shutil.rmtree(dir)
+	make_directory(dir)
 
 ################
 ### file i/o ###
@@ -113,23 +148,15 @@ def create_empty_file(filepath):
 	"""
 	open(path, 'w').close()
 
-def make_directory(directory_path):
-	"""
-	:description:
-	"""
-	# create the output directory if it does not already exist
-	try:
-		# makes the dir
-		os.makedirs(directory_path)
-	except OSError as exc: 
-		# if the exception is that the directory exists, ignore it so long as it is in fact a directory
-		if exc.errno == errno.EEXIST and os.path.isdir(directory_path):
-			pass
+def load_caffe_features(filepath):
+	load_dict = scipy.io.loadmat(filepath)
+	return load_dict['feautres']
 
-def empty_directory(dir):
-	"""
-	:description:
-	"""
-	shutil.rmtree(dir)
-	make_directory(dir)
+def save_caffe_features(features, output_dir, filename):
+	save_dict = {}
+	save_dict['features'] = features
+	scipy.io.savemat(filepath, save_dict)
+	
+
+
 	

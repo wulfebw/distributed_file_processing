@@ -35,6 +35,9 @@ refactoring questions to answer:
 	(1) is the environment variable passing method the best way to pass information? what other ways would be better? Does mapreduce or similar frameworks employ a client/server model or something? How do those frameworks work?
 	(2) 
 
+STOPPED:
+(1) how to pass info to extract visual features?
+
 """
 
 import os
@@ -45,6 +48,7 @@ import shutil
 import zipfile
 import boto.ec2
 import subprocess
+
 
 import strategies
 from strategies import strategy_factory, extract_frames, extract_visual_features
@@ -76,8 +80,6 @@ class Peon(object):
 			):
 
 		self.id = instance_id
-		# self.access_key = access_key
-		# self.secret_key = secret_key
 		self.s3_utility = s3_utility
 		self.input_s3_bucket = input_s3_bucket
 		self.output_s3_bucket = output_s3_bucket
@@ -153,11 +155,18 @@ class Peon(object):
 		# load file into this ec2 instance
 		self.s3_utility.download_file(self.input_s3_bucket, self.current_filename, self.input_dir)
 
+		# these if statements are indicative of poor design, need to refactor somehow
+		# problem is that these different strategies need different inputs
 		if self.processing_strategy == extract_visual_features.extract_visual_features:
 			file_utils.unzip_frames_directory(self.current_filename, self.input_dir)
 
 		# call the processing_strategy
-		self.processing_strategy(self.current_filename, self.input_dir, self.output_dir)
+		if self.processing_strategy == extract_visual_features.extract_visual_features:
+			features = self.processing_strategy(self.input_dir)
+			file_utils.write_caffe_features(features, self.output_dir)
+
+		else:
+			self.processing_strategy(self.current_filename, self.input_dir, self.output_dir)
 
 		# zip output files
 		file_utils.zip_output()
@@ -215,8 +224,6 @@ if __name__ == '__main__':
 		output_dir = 'processing/output/'
 		input_dir = 'processing/input/'
 		processed_dir = 'processing/processed/'
-
-
 
 	# make the directories
 	file_utils.make_directory(output_dir)

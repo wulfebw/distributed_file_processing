@@ -51,16 +51,24 @@ wget https://s3-us-west-2.amazonaws.com/bsdsframes/0209_f01_m01.zip     // from 
 
 need to test this
 
+todo:
+(1) separate out the extract features and main into logical, easily callable functions
+(2) need unified way to call this shit
+
 """
 
-import caffe
-import numpy as np
-import argparse
+
 import os
 import sys
 import csv
 import time
+import glob
+import caffe
+import argparse
 import scipy.io
+
+import numpy as np
+
 
 # don't know what this is
 def reduce_along_dim(img , dim , weights , indicies): 
@@ -223,25 +231,12 @@ def preprocess_image(img):
     # need to set this with my mean
     #mean = np.array([103.939, 116.779, 123.68]) #mean of the vgg # vgg = the team that did something, I would guess that this is the mean pixel values accross the dataset
    	# this may be screwing things up
-    mean = np.zeros(3)
+    mean = np.array([133.773, 135.8895, 137.037])
 
     for i in range(0,3):
         img[:,:,i] = img[:,:,i] - mean[i] #subtracting the mean		# supported here
     img = np.transpose(img, [2,0,1])	# transpose to get standard order, might read up on this
     return img #HxWx3		# this is possibly a good habit - labeling return values
-        
-
-def write_features_to_file(output_filepath, features):
-    """
-    :type output_filepath: string
-    :param output_filepath: file to write feature to 
-
-    :type features: numpy array
-    :param features: 2 dimensional array of features with each row representing a frame, each col a feat
-    """
-    with open(output_filepath, 'w') as f:
-        csv_writer = csv.writer(f, delimiter=' ')
-        csv_writer.writerows(features)
 
 def extract_frame_number_from_filepath(img_path):
     try:
@@ -250,12 +245,11 @@ def extract_frame_number_from_filepath(img_path):
     except ValueError as e:
         raise ValueError('invalid path of: {}'.format(img_path))
 
-
 def sort_img_paths(img_paths):
 	return sorted(img_paths, key=extract_frame_number_from_filepath)
 
 # main method
-def extract_visual_features(path_imgs , path_model_def , path_model , WITH_GPU = True , batch_size = 50 ):
+def extract_visual_features(input_dir, caffe_net):
     '''
     # uses VGG_ILSVRC_16_layers.caffemodel, where can I get that I wonder?
     # extracts 4096 features looks like
@@ -263,48 +257,61 @@ def extract_visual_features(path_imgs , path_model_def , path_model , WITH_GPU =
     
     Inputs:
     ------
-    path_imgs      : list of the full path of images to be processed 	# list of full paths to img
-    path_model_def : path to the model definition file 					# model def file .prototxt
-    path_model     : path to the pretrained model weight 				# model file .caffemodel
-    WItH_GPU       : Use a GPU 
+   
     
     Output:
     -------
     features           : return the features extracted  				# what is their form?
     '''
+    print('extract_visual_features called')
+    files = glob.glob('{0}/*.jpg'.format(input_dir))
+    # print files
+    # sort b/c need the features to be in sequence
+    imgs = sort_img_paths(files)
+    image_paths = imgs #[os.path.join(input_directory, f) for f in imgs]
+
+    # model_def_path = '/Users/wulfe/Dropbox/Start/smile/data/_temp/something.prototxt'
+    # # model_def_path = '/home/ubuntu/models/proto/default.prototxt'
+    # model_path = '/Users/wulfe/Dropbox/Start/scripts/distributed_file_processing/tests/test_data/models/VGG_ILSVRC_16_layers.caffemodel'
+    # # model_path = '/home/ubuntu/models/caffe/VGG_ILSVRC_16_layers.caffemodel'
+    # WITH_GPU = False
+    batch_size = 10
+
+
+    # # flag to set GPU on/off, might have been getting an error with this
+    # if WITH_GPU:
+    #     caffe.set_mode_gpu()
+    # else:
+    #     caffe.set_mode_cpu()
     
-    # flag to set GPU on/off, might have been getting an error with this
-    if WITH_GPU:
-        caffe.set_mode_gpu()
-    else:
-        caffe.set_mode_cpu()
-    print "loading model:",path_model
-    # the classifier
-    # prototxt file
-    # .caffemodel file
-    # img dimensions
-    # raw scale of pixels (max)
-    # channel_swap ?
-    # the mean image, why giving this here is in preprocessing it was subtracted?
-    caffe_net = caffe.Classifier(path_model_def, path_model, image_dims = (224,224), raw_scale = 255,channel_swap=(2,1,0), mean = np.zeros(3))
+    # # the classifier
+    # # prototxt file
+    # # .caffemodel file
+    # # img dimensions
+    # # raw scale of pixels (max)
+    # # channel_swap ?
+    # # the mean image, why giving this here is in preprocessing it was subtracted?
+    # caffe_net = caffe.Classifier(model_def_path, model_path, image_dims = (224,224), raw_scale = 255,channel_swap=(2,1,0), mean = np.array([133.773, 135.8895, 137.037]))
     # feature array, the rows are the features and the columns are the different images
-    feats = np.zeros((4096 , len(path_imgs)))
+    feats = np.zeros((4096 , len(image_paths)))
     
 
 
     # from 0 to the number of images, in chuncks of batch_size
-    for b in range(0 , len(path_imgs) , batch_size):
+    for b in range(0 , len(image_paths) , batch_size):
+        print('batch loop')
         start = time.time()
     	# crate a new list of images
         list_imgs = []
         # for each img in each batch (use batches because memory constraints I assume)
         for i in range(b , b + batch_size ):
+            print('img loop')
         	# if still within index, then load the image
-            if i < len(path_imgs):
+            if i < len(image_paths):
                 try:
-                    list_imgs.append( np.array( caffe.io.load_image(path_imgs[i]) ) ) #loading images HxWx3 (RGB)
+                    list_imgs.append( np.array( caffe.io.load_image(image_paths[i]) ) ) #loading images HxWx3 (RGB)
                 except Exception as e:
-                    print path_imgs[i]
+                    print image_paths[i]
                     raise e
             # if we've run out of images, then some fake values to make the total num of imgs divisible by convenient number (they are ignored)
             else:
@@ -314,6 +321,7 @@ def extract_visual_features(path_imgs , path_model_def , path_model , WITH_GPU =
         # the input to caffe?
         # list of images, each preprocessed, how does this not run out of memory?
         caffe_input = np.asarray([preprocess_image(in_) for in_ in list_imgs]) #preprocess the images
+        # print('len caffe input: {}'.format(caffe_input))
 
         # call the net forward on _all of the data_
         predictions = caffe_net.forward(data = caffe_input)
@@ -321,18 +329,22 @@ def extract_visual_features(path_imgs , path_model_def , path_model , WITH_GPU =
         # then transposing it
         predictions = predictions[caffe_net.outputs[0]].transpose()
         # only add real predictions, not the fake ones
-        if i < len(path_imgs):
+        if i < len(image_paths):
             feats[:,b:i+1] = predictions
             n = i+1
         else:
-            n = min(batch_size , len(path_imgs) - b) 
+            n = min(batch_size , len(image_paths) - b) 
             feats[:,b:b+n] = predictions[:,0:n] #Removing extra predictions, due to the extra last image appending.
             n += b 
-        print "%d out of %d done....."%(n ,len(path_imgs))
+        print('end batch loop')
+        print "%d out of %d done....."%(n ,len(image_paths))
         end = time.time()  
         print('batch time: {}'.format(end - start))
 
-    return feats      
+    return feats
+     
+
+
     
 if __name__ == '__main__':
     # using arg parser, lets adopt this

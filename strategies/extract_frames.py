@@ -1,6 +1,12 @@
+import os
+
+import file_utils
+
+
+
 def extract_frames(filename, input_dir, output_dir):
 	# determine the base name of this filename for use in building the output filename
-	filename_base = get_frame_name_from_filename(filename)
+	filename_base = file_utils.get_frame_name_from_filename(filename)
 
 	# set the base path of the output files
 	output_filepath_base = os.path.join(output_dir, filename_base)
