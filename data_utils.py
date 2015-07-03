@@ -102,13 +102,17 @@ def create_samples_from_feature_files(pairs, sequence_length, output_filepath):
 	"""
 	samples = []
 	for pair in pairs:
-		data_1 = file_utils.read_data(pair[0])
-		data_2 = file_utils.read_data(pair[1])
-		if not data_1 or not data_2:
+		data_1 = file_utils.load_caffe_features(pair[0])
+		print('data_1.shape: {}'.format(data_1.shape))
+		print('type(data_1): {}'.format(type(data_1)))
+		data_2 = file_utils.load_caffe_features(pair[1])
+		if not data_1.size or not data_2.size:
 			continue
 		sample = create_sample_from_features(data_1, data_2, sequence_length)
+		print('sample.shape: {}'.format(np.shape(sample)))
+		print('type(sample): {}'.format(type(sample)))
 		#file_utils.append_sample(output_filepath, sample)
-		samples += sample
+		#samples += sample
 	return samples
 
 if __name__ == '__main__':

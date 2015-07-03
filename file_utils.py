@@ -150,7 +150,7 @@ def create_empty_file(filepath):
 
 def load_caffe_features(filepath):
 	load_dict = scipy.io.loadmat(filepath)
-	return load_dict['feautres']
+	return load_dict['features'].T
 
 def save_caffe_features(features, output_dir, filename):
 	save_dict = {}
