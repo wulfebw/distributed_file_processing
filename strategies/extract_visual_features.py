@@ -299,13 +299,11 @@ def extract_visual_features(input_dir, caffe_net):
 
     # from 0 to the number of images, in chuncks of batch_size
     for b in range(0 , len(image_paths) , batch_size):
-        print('batch loop')
         start = time.time()
     	# crate a new list of images
         list_imgs = []
         # for each img in each batch (use batches because memory constraints I assume)
         for i in range(b , b + batch_size ):
-            print('img loop')
         	# if still within index, then load the image
             if i < len(image_paths):
                 try:
@@ -336,7 +334,6 @@ def extract_visual_features(input_dir, caffe_net):
             n = min(batch_size , len(image_paths) - b) 
             feats[:,b:b+n] = predictions[:,0:n] #Removing extra predictions, due to the extra last image appending.
             n += b 
-        print('end batch loop')
         print "%d out of %d done....."%(n ,len(image_paths))
         end = time.time()  
         print('batch time: {}'.format(end - start))
