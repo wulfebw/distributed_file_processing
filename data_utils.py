@@ -1,6 +1,7 @@
 import os
 import csv
 import glob
+import random
 import argparse
 
 import numpy as np
@@ -46,6 +47,12 @@ def get_filepath_pairs_by_interaction(filepaths):
 			if interaction_name_dict[interaction_name][0] != f:
 				interaction_name_dict[interaction_name] = interaction_name_dict[interaction_name] + (f, )
 	return [value for key, value in interaction_name_dict.iteritems() if len(value) == 2]
+
+def get_filepath_pairs_randomly(filepaths):
+	random.shuffle(filepaths)
+	pairs = [(i,j) for i,j in zip(filepaths[::2], filepaths[1::2])]
+	return pairs
+
 
 def group_single_timestep_data_into_sequences(timestep_data, sequence_length):
 	"""

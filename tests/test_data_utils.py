@@ -44,6 +44,7 @@ class TestDataUtils(unittest.TestCase):
 		expected = []
 		self.assertItemsEqual(actual, expected)
 
+
 	def test_get_filepath_pairs_by_interaction_matched_pairs_exist_w_repeats(self):
 		filepaths = ['/test/test/0209_f01_m01.csv',
 					'/test/test/0209_m01_f01.csv',
@@ -54,6 +55,24 @@ class TestDataUtils(unittest.TestCase):
 		expected = [('/test/test/0209_f01_m01.csv', '/test/test/0209_m01_f01.csv'),
 					('/test/test/0209_f01_m02.csv', '/test/test/0209_m02_f01.csv')]
 		self.assertItemsEqual(actual, expected)
+
+	""" get_filepath_pairs_randomly tests """
+	def test_get_filepath_pairs_randomly_empty(self):
+		filepaths = []
+		actual = data_utils.get_filepath_pairs_randomly(filepaths)
+		expected = []
+		self.assertItemsEqual(actual, expected)
+
+	def test_get_filepath_pairs_randomly_pairs(self):
+		filepaths = ['/test/test/0209_f01_m01.csv',
+					'/test/test/0209_m01_f01.csv',
+					'/test/test/0209_f01_m02.csv',
+					'/test/test/0209_m02_f01.csv',
+					'/test/test/0209_f01_m01.csv']
+		pairs = data_utils.get_filepath_pairs_randomly(filepaths)
+		actual_len = len(pairs)
+		expected_len = 2
+		self.assertEqual(actual_len, expected_len)
 
 	""" get_interaction_name tests """
 	def test_get_interaction_name_male_first(self):
